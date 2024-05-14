@@ -22,7 +22,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 DATA_DIR = ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw_data"
 
-J_SCORE = DATA_DIR / "judges_score.csv"
+J_SCORE = RAW_DATA_DIR / "judges_score.csv"
 
 # audio
 UPLOAD_FILE_DIR = ROOT / "audio"

@@ -1,3 +1,5 @@
 # -*- coding: utf-8 -*-
 
 black
+pandas == 2.2.2
+chardet == 5.2.0
