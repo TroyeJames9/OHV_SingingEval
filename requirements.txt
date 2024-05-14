@@ -2,4 +2,4 @@
 
 black
 pandas == 2.2.2
-chardet == 5.2.0
+chardet == 5.2.0 # csv编码格式识别
