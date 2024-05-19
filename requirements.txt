@@ -1,5 +1,15 @@
 # -*- coding: utf-8 -*-
 
+jupyter
 black
 pandas == 2.2.2
 chardet == 5.2.0 # csv编码格式识别
+
+torch == 2.2.2
+torchvision == 0.17.2
+torchaudio == 2.2.2
+
+# torchaudio.ipynb所需
+librosa
+boto3
+matplotlib
