@@ -14,6 +14,7 @@ import torchaudio
 import torchaudio.transforms as t
 import pandas as pd
 import setting as se
+import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import Audio, display
 from pathlib import Path
@@ -297,6 +298,100 @@ class AudioPreprocessor:
         plt.show(block=False)
 
 
+class JudgeCorrelationCalculator(CsvOp):
+    """
+    该类用于计算评委之间的皮尔逊相关系数。
+    它继承自CsvOp类，并添加了用于计算相关系数的特有方法。
+    """
+
+    def __init__(
+        self,
+        file_path: Path,
+        judge_col: str,
+        module_col: str,
+        sort_col: str,
+        score_col: str,
+    ):
+        """
+        初始化JudgeCorrelationCalculator实例，设置CSV文件路径和相关的列名。
+
+        参数:
+        - file_path (Path): CSV文件的路径。这里特指含有各评委评分数据的csv文件。
+        - judge_col (str): 对评委具有唯一标识的列的名称。
+        - module_col (str): 对模块具有唯一标识的列的名称。
+        - sort_col (str): 用于排序的列的名称。通常为数据表的主键id
+        - score_col (str): 评委评分数值结果的列的名称。
+        """
+        super().__init__(file_path)  # 调用基类的__init__方法
+        self.judge_col = judge_col
+        self.module_col = module_col
+        self.sort_col = sort_col
+        self.score_col = score_col
+
+    @staticmethod
+    def _cal_avg_pearson(arrays: dict):
+        """
+        私有静态方法，用于计算平均皮尔逊相关系数。
+        它接收一个字典，其中键是评分模块名称+评委id，值是评委的评分数组。
+
+        参数:
+        - arrays (dict): 一个字典，其中键是模块名称+评委id，值是评委的评分ndarray数组。
+
+        返回:
+        - float: 所有评委之间评分的平均皮尔逊相关系数。
+        """
+        # 将所有数组组合成一个大的二维数组
+        combined_array = np.array([arrays[key] for key in arrays.keys()])
+        # 计算各列之间的皮尔逊相关系数
+        correlation_matrix = np.corrcoef(combined_array)
+        row_indices, col_indices = np.triu_indices(correlation_matrix.shape[0], k=1)
+        average_lower_triangle = np.mean(correlation_matrix[row_indices, col_indices])
+
+        return average_lower_triangle
+
+    def get_per_judge_module(self):
+        """
+        提取每个评委在每个模块的评分数据，分别存储为字典中的一个ndarray元素
+
+        返回:
+        - dict: 一个字典，其中键是模块名称+评委id，值是评委的评分数组。
+        """
+        judge_pd = self.read()
+        per_judge_by_module_dict = {}
+        judge_id_list = judge_pd[self.judge_col].unique()
+        module_col_list = judge_pd[self.module_col].unique()
+        for judge_id in judge_id_list:
+            for module in module_col_list:
+                per_judge_by_module = judge_pd[
+                    (judge_pd[self.judge_col] == judge_id)
+                    & (judge_pd[self.module_col] == module)
+                ].sort_values(by=self.sort_col)
+                key_name = str(judge_id) + "_" + module
+                per_judge_by_module_dict[key_name] = per_judge_by_module[
+                    self.score_col
+                ].to_numpy()
+
+        return per_judge_by_module_dict
+
+    def cal_per_module_pearson(self, arrays: dict):
+        """
+        计算每个模块的平均皮尔逊相关系数。
+
+        参数:
+        - arrays (dict): 一个字典，其中键是模块名称+评委id，值是评委的评分数组。
+
+        返回:
+        - dict: 一个字典，其中键是模块名称，值是该模块的评委间评分的平均皮尔逊相关系数。
+        """
+        unique_module = {key.split("_")[1] for key in arrays.keys() if "_" in key}
+        pearson_dict = {}
+        for module in unique_module:
+            module_dict = {key: value for key, value in arrays.items() if module in key}
+            pearson_dict[module] = self._cal_avg_pearson(module_dict)
+
+        return pearson_dict
+
+
 def test_write():
     j_score = CsvOp(file_path=se.RAW_DATA_DIR / "test.csv")
     write_dict_list = [{"what": 3}, {"what": 4}]
@@ -314,5 +409,18 @@ def test_audio_pre():
     return ap
 
 
+def test_judge_corr():
+    jtest = JudgeCorrelationCalculator(
+        file_path=se.J_SCORE,
+        judge_col="judge_id",
+        module_col="score_dim",
+        sort_col="person",
+        score_col="judge_score",
+    )
+    rs_dict = jtest.get_per_judge_module()
+    p_rs = jtest.cal_per_module_pearson(rs_dict)
+    return p_rs
+
+
 if __name__ == "__main__":
-    test_audio_pre()
+    print(test_judge_corr())
