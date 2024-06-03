@@ -302,6 +302,9 @@ class JudgeCorrelationCalculator(CsvOp):
     """
     该类用于计算评委之间的皮尔逊相关系数。
     它继承自CsvOp类，并添加了用于计算相关系数的特有方法。
+    作者：troyejames
+    时间：20240603
+    版本：v0.1
     """
 
     def __init__(
